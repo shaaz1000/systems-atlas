@@ -6,7 +6,7 @@ const { load } = require('./load');
 const errors = [];
 const w = load({ onError: (e) => errors.push(e) });
 const A = w.ACAD;
-const routes = ['home', 'library', 'patterns', 'matrix', 'compose', 'decide', 'framework', 'scenarios', 'interview', 'mastery', 'glossary', 'map', 'review']
+const routes = ['home', 'watch', 'library', 'patterns', 'matrix', 'compose', 'decide', 'framework', 'scenarios', 'interview', 'mastery', 'glossary', 'map', 'review']
   .concat([...Array(12).keys()].map((i) => 'level-' + i), Object.keys(A.modules), Object.keys(A.cases), Object.keys(A.patterns),
     A.scenarios.map((s) => s.id), A.mastery.map((m) => m.id), A.interview.slice(0, 1).map((q) => q.id));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

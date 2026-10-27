@@ -8,7 +8,8 @@
     "check": "for f in js/*.js; do node --check \"$f\" || exit 1; done",
     "test:refs": "node tests/refs.js",
     "test:smoke": "node tests/smoke.js",
-    "test": "npm run check && npm run test:refs && npm run test:smoke"
+    "test": "npm run check && npm run test:refs && npm run test:stories && npm run test:smoke",
+    "test:stories": "ALLOW_MISSING=1 node tests/stories.js"
   },
   "devDependencies": {
     "jsdom": "24.1.3"

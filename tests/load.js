@@ -31,10 +31,15 @@ function load({ onError } = {}) {
   w.SVGElement.prototype.getPointAtLength = () => ({ x: 0, y: 0 });
   w.SVGElement.prototype.getBBox = () => ({ x: 0, y: 0, width: 10, height: 10 });
   w.Element.prototype.scrollIntoView = function () {};
+  // jsdom does not implement media playback
+  w.HTMLMediaElement.prototype.play = function () { return Promise.resolve(); };
+  w.HTMLMediaElement.prototype.pause = function () {};
+  w.HTMLMediaElement.prototype.load = function () {};
   w.scrollTo = () => {};
   if (onError) w.addEventListener('error', (e) => onError('window.error: ' + ((e.error && e.error.stack) || e.message)));
 
   for (const s of scripts) {
+    if (!fs.existsSync(path.join(ROOT, s))) { if (onError && !process.env.ALLOW_MISSING) onError('missing script ' + s); continue; }
     try {
       w.eval(fs.readFileSync(path.join(ROOT, s), 'utf8') + '\n//# sourceURL=' + s);
     } catch (e) {

@@ -97,6 +97,23 @@
     return Object.assign({}, q, { options: idx.map((i) => q.options[i]), answer: idx.indexOf(q.answer), misconception: mis });
   }
 
+  /* Simple mode: plain-English only, precise detail behind a toggle. On by default. */
+  let simple = true;
+  try { simple = localStorage.getItem('systems-atlas.simple') !== 'off'; } catch (e) {}
+  function precise(label, ...kids) {
+    return h('details', { class: 'precise' }, h('summary', null, label), h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px' } }, ...kids));
+  }
+
+  /* Narrated story at the top of a chapter, plus its one-minute summary */
+  function storyBlock(targetId) {
+    const st = ACAD.storyFor && ACAD.storyFor(targetId);
+    if (!st) return null;
+    const host = h('div');
+    ACAD.storyPlayer(host, st);
+    return h('section', { style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, host,
+      st.simple ? h('div', { class: 'panel' }, h('div', { class: 'eyebrow', style: { marginBottom: '6px' } }, 'In one minute'), rich('p', st.simple, 'one-minute read')) : null);
+  }
+
   /* AI-or-reveal answer box */
   function answerBox(o) {
     const key = o.key;
@@ -133,6 +150,18 @@
   function renderComparison(c) {
     if (!c) return null;
     const row = (label, txt) => txt ? h('div', { class: 'cmp-row' }, h('h5', null, label), rich('div', txt)) : null;
+    if (simple) {
+      return h('article', { class: 'cmp', id: c.id },
+        h('div', { class: 'cmp-head' }, h('span', { class: 'plate-no' }, 'Why this, not that?'), h('h3', null, c.title), rich('p', c.problem, 'muted')),
+        h('div', { class: 'cmp-ab' },
+          h('div', { class: 'side-a' }, h('h5', null, c.a), rich('div', c.howA)),
+          h('div', { class: 'side-b' }, h('h5', null, c.b), rich('div', c.howB))),
+        row('Choose ' + c.a + ' when', c.chooseA), row('Choose ' + c.b + ' when', c.chooseB),
+        h('div', { class: 'cmp-row cmp-interview' }, h('h5', null, 'Say it in an interview'), rich('div', c.interview)),
+        h('div', { class: 'cmp-row' }, precise('Full comparison: advantages, latency, cost, scale, failures, security',
+          h('div', { class: 'small' }, h('b', null, c.a + ': '), rich('span', c.advA)), h('div', { class: 'small' }, h('b', null, c.b + ': '), rich('span', c.advB)),
+          row('Latency', c.latency), row('Cost', c.cost), row('Scalability', c.scale), row('Failure modes', c.failure), row('Security', c.security), row('What would change the decision', c.changes))));
+    }
     return h('article', { class: 'cmp', id: c.id },
       h('div', { class: 'cmp-head' }, h('span', { class: 'plate-no' }, 'Why this, not that?'), h('h3', null, c.title), rich('p', c.problem, 'muted')),
       h('div', { class: 'cmp-ab' },
@@ -182,6 +211,13 @@
   function renderSection(sec, mod) {
     switch (sec.kind) {
       case 'concept':
+        if (simple) {
+          return h('article', { class: 'concept simple', id: sec.id ? 'c-' + sec.id : null },
+            h('header', null, h('h3', null, sec.title), tagChips(sec.tags)),
+            h('div', { class: 'c-plain' }, rich('div', sec.plain),
+              h('div', { style: { marginTop: '10px' } }, precise('Show the precise version', rich('div', sec.technical)))),
+            sec.pitfall ? h('div', { class: 'c-pit' }, h('span', { class: 'c-lab' }, 'Common mistake'), rich('div', sec.pitfall)) : null);
+        }
         return h('article', { class: 'concept', id: sec.id ? 'c-' + sec.id : null },
           h('header', null, h('h3', null, sec.title), tagChips(sec.tags)),
           h('div', { class: 'c-plain' }, h('span', { class: 'c-lab' }, 'In plain words'), rich('div', sec.plain)),
@@ -280,7 +316,7 @@
         h('h1', { style: { marginTop: '10px' } }, 'Learn to design, debug and defend production AI and backend systems.'),
         h('p', { class: 'lede' }, 'An atlas of system anatomy with live simulators. Trace requests through real architectures, overload them, inject failures, diagnose incidents, and practise the interview answer that proves you understand the trade-offs.'),
         h('div', { class: 'btn-row', style: { marginTop: '18px' } },
-          UI.btn('Start the flagship lesson', () => go('lesson-10k'), 'primary'), UI.btn('Browse the curriculum', () => go('level-0')), UI.btn('Case library', () => go('library'), 'ghost')),
+          UI.btn('Start the flagship lesson', () => go('lesson-10k'), 'primary'), UI.btn('▶ Watch the stories', () => go('watch')), UI.btn('Browse the curriculum', () => go('level-0'), 'ghost')),
         h('div', { class: 'btn-row small muted', style: { marginTop: '14px' } },
           h('span', null, done + ' of ' + total + ' modules complete'), h('span', { 'aria-hidden': 'true' }, '·'),
           h('span', null, Object.keys(ACAD.cases).length + ' case studies'), h('span', { 'aria-hidden': 'true' }, '·'),
@@ -324,6 +360,7 @@
     page.append(sectionBlock(h('div', { style: { display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px' } }, h('h2', null, 'Learning path'), link('map', 'View the concept dependency map →')), pathEl));
 
     page.append(sectionBlock('Beyond the curriculum', h('div', { class: 'grid3' },
+      tile('Watch the stories', Object.keys(ACAD.stories || {}).length + ' narrated animations in plain English: the problem, what happens, why it breaks, the fix.', 'watch'),
       tile('Case study library', Object.keys(ACAD.cases).length + ' systems: Chaos Monkey, live streaming, Tatkal booking, dark stores, Spanner, Dynamo, real postmortems.', 'library'),
       tile('The patterns behind every scalable system', Object.keys(ACAD.patterns).length + ' reusable patterns with mechanisms, limits and interview answers.', 'patterns'),
       tile('Cross-case pattern matrix', 'Which case uses which pattern — documented, industry practice or conceptual.', 'matrix'),
@@ -370,6 +407,7 @@
       h('h1', null, m.title), rich('p', m.summary, 'muted'),
       h('div', { class: 'lesson-meta' }, UI.pill('~' + m.minutes + ' min'), ACAD.isDone(m.id) ? UI.pill('Complete', 'good') : UI.pill('Pass the check to complete', 'info'), bookmarkBtn('module', m.id))));
     if (unmet.length) page.append(UI.note('This lesson builds on: ' + unmet.map((p) => '<a href="#' + p + '">' + UI.esc(ACAD.modules[p].title) + '</a>').join(', ') + '. You can continue, but if a term feels unfamiliar, start there.', 'tip', 'Prerequisites'));
+    const mStory = storyBlock(m.id); if (mStory) page.append(mStory);
     if (m.outcomes) page.append(h('div', { class: 'read' }, h('div', { class: 'eyebrow', style: { marginBottom: '6px' } }, 'You will be able to'), h('ul', { class: 'outcomes' }, m.outcomes.map((o) => rich('li', o)))));
     (m.sections || []).forEach((s) => { const el = renderSection(s, m); if (el) page.append(el); });
 
@@ -429,6 +467,7 @@
       h('div', { class: 'eyebrow' }, 'Sources and confidence'),
       (c.provenance || []).map((p) => h('div', { style: { display: 'flex', gap: '10px', alignItems: 'baseline', flexWrap: 'wrap' } },
         PROV[p.kind] ? UI.pill(PROV[p.kind][0], PROV[p.kind][1]) : UI.pill(p.kind), h('div', { style: { flex: '1', minWidth: '0' } }, rich('span', p.text), p.source ? h('span', { class: 'muted small' }, ' — ' + p.source) : null)))));
+    const cStory = storyBlock(c.id); if (cStory) page.append(cStory);
     const num = (n, t) => h('div', null, h('span', { class: 'plate-no' }, String(n).padStart(2, '0')), h('h2', null, t));
     page.append(sectionBlock(num(1, 'Business problem'), rich('div', c.business, 'read')));
     page.append(sectionBlock(num(2, 'Scale and constraints'), rich('div', c.scale, 'read')));
@@ -835,6 +874,41 @@
     return page;
   };
 
+  /* ---------- watch: every story, back to back ---------- */
+  let watchIdx = 0;
+  V.watch = function () {
+    const order = ['lesson-10k'].concat(mods().filter((m) => !m.flagship).sort((a, b) => a.level - b.level).map((m) => m.id), cases().map((c) => c.id))
+      .map((id) => ACAD.storyFor(id)).filter(Boolean);
+    const page = h('div', { class: 'page' }, crumbs(['Atlas', 'home'], ['Watch']),
+      h('div', { class: 'lesson-head read' }, h('div', { class: 'plate-no' }, 'Watch mode'), h('h1', null, 'Every chapter as a short narrated animation'),
+        h('p', { class: 'muted' }, 'Each story shows the problem, what happens, why it breaks, and the fix, in plain English. Turn on autoplay to watch chapter after chapter. The voice is your browser\'s built-in speech; captions always show.')));
+    if (!order.length) { page.append(UI.note('No stories are available yet.', 'tip')); return page; }
+    watchIdx = Math.min(watchIdx, order.length - 1);
+    let auto = true;
+    const host = h('div');
+    const info = h('div', { class: 'btn-row' });
+    const list = h('div', { class: 'grid3' });
+    const autoT = UI.toggle({ id: 'watch-auto', label: 'Autoplay the next chapter', value: true, onChange: (v) => (auto = v) });
+    function load(i, autoplay) {
+      watchIdx = i;
+      const st = order[i];
+      UI.clear(host);
+      ACAD.storyPlayer(host, st, { autoplay, onEnd: () => { if (auto && watchIdx < order.length - 1 && host.isConnected) load(watchIdx + 1, true); } });
+      UI.append(UI.clear(info), h('span', { class: 'mono small muted' }, 'Chapter ' + (i + 1) + ' of ' + order.length), link(st.target, 'Open the full chapter →'),
+        i > 0 ? UI.btn('← Previous', () => load(i - 1, true), 'ghost') : null, i < order.length - 1 ? UI.btn('Next chapter →', () => load(i + 1, true), 'ghost') : null);
+      [...list.children].forEach((t, j) => t.classList.toggle('on', j === i));
+      window.scrollTo(0, 0);
+    }
+    order.forEach((st, i) => {
+      const t = titleOf(st.target) || st.title;
+      const lv = ACAD.modules[st.target] ? (ACAD.modules[st.target].flagship ? 'Flagship' : 'Level ' + ACAD.modules[st.target].level) : 'Case study';
+      list.appendChild(h('button', { type: 'button', class: 'tile', onclick: () => load(i, true) }, h('span', { class: 'eyebrow' }, lv), h('h4', null, st.title), h('p', null, t)));
+    });
+    page.append(host, info, autoT, sectionBlock('All stories', list));
+    load(watchIdx, false);
+    return page;
+  };
+
   /* ---------- glossary, map, review ---------- */
   let glFilter = '';
   V.glossary = function () {
@@ -956,7 +1030,7 @@
       else if (id.startsWith('sc-') && ACAD.scenarios.find((s) => s.id === id)) view = V.scenario(ACAD.scenarios.find((s) => s.id === id));
       else if (id.startsWith('iq-')) view = V.interview(id);
       else if (id.startsWith('ms-') && ACAD.mastery.find((m) => m.id === id)) view = V.masteryProblem(ACAD.mastery.find((m) => m.id === id));
-      else if (V[id] && ['library', 'patterns', 'matrix', 'compose', 'decide', 'framework', 'scenarios', 'interview', 'mastery', 'glossary', 'map', 'review'].indexOf(id) >= 0) view = V[id]();
+      else if (V[id] && ['watch', 'library', 'patterns', 'matrix', 'compose', 'decide', 'framework', 'scenarios', 'interview', 'mastery', 'glossary', 'map', 'review'].indexOf(id) >= 0) view = V[id]();
       else view = V.notFound();
     } catch (e) {
       console.error(e);
@@ -976,7 +1050,7 @@
     const total = mods().filter((m) => !m.flagship).length, done = mods().filter((m) => !m.flagship && ACAD.isDone(m.id)).length;
     side.append(h('div', { class: 'side-progress' }, h('div', { class: 'eyebrow', style: { padding: '0 0 6px' } }, 'Progress · ' + done + '/' + total), h('div', { class: 'bar' }, h('i', { style: { width: (total ? done / total * 100 : 0) + '%' } }))));
     const navA = (id, label, lv, tick) => h('a', { href: '#' + id, class: 'nav-a', 'data-id': id }, lv != null ? h('span', { class: 'lv' }, lv) : null, h('span', { class: 'nav-t' }, label), tick != null ? h('span', { class: 'tick ' + tick }) : null);
-    side.append(h('div', { class: 'side-sec' }, h('span', { class: 'eyebrow' }, 'Start'), navA('home', 'Atlas home', '◆'), navA('lesson-10k', '10,000 users, one chatbot', '★', moduleStatus(ACAD.modules['lesson-10k']))));
+    side.append(h('div', { class: 'side-sec' }, h('span', { class: 'eyebrow' }, 'Start'), navA('home', 'Atlas home', '◆'), navA('lesson-10k', '10,000 users, one chatbot', '★', moduleStatus(ACAD.modules['lesson-10k'])), navA('watch', 'Watch the stories', '▶')));
     const cur = h('div', { class: 'side-sec' }, h('span', { class: 'eyebrow' }, 'Curriculum'));
     LEVELS.forEach((L) => {
       const ms = modsOfLevel(L.n);
@@ -1096,8 +1170,17 @@
   }
 
   /* ---------- boot ---------- */
+  function initSimple() {
+    const b = document.getElementById('simpleBtn');
+    if (!b) return;
+    const paint = () => { b.classList.toggle('on', simple); b.setAttribute('aria-pressed', String(simple)); b.textContent = simple ? 'Simple ✓' : 'Simple'; };
+    paint();
+    b.addEventListener('click', () => { simple = !simple; try { localStorage.setItem('systems-atlas.simple', simple ? 'on' : 'off'); } catch (e) {} paint(); const y = window.scrollY; route(); window.scrollTo(0, y); });
+  }
+
   function boot() {
     initTheme();
+    initSimple();
     document.getElementById('menuBtn').addEventListener('click', () => side.classList.toggle('open'));
     buildIndex(); initSearch(); initGlossaryPop(); renderSide();
     window.addEventListener('hashchange', route);
