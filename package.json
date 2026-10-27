@@ -1,0 +1,19 @@
+{
+  "name": "systems-atlas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive academy for AI and backend system design: architecture anatomy, simulators, case studies, patterns and interview practice.",
+  "scripts": {
+    "start": "npx --yes http-server . -p 8080 -c-1 -o",
+    "check": "for f in js/*.js; do node --check \"$f\" || exit 1; done",
+    "test:refs": "node tests/refs.js",
+    "test:smoke": "node tests/smoke.js",
+    "test": "npm run check && npm run test:refs && npm run test:smoke"
+  },
+  "devDependencies": {
+    "jsdom": "24.1.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
